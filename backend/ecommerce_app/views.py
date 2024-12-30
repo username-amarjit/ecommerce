@@ -11,6 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from ecommerce_app.models import Product
 from ecommerce_app.serializers import ProductSerializer
+from ecommerce_app.services import CartSrv
 from ecommerce_app.services import ProductSrv
 
 @csrf_exempt
@@ -51,10 +52,10 @@ def create_product_view(request):
         if code == status.HTTP_201_CREATED:
             return Response({"data": data, "response_msg": msg, "response_code": code})
         else:
-            return Response({"error": msg}, status=code)
+            return Response({"response_msg": msg, "response_code": code})
     except Exception as e:
         log.error(traceback.format_exc())
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": str(e),"response_msg": "Error while creating product", "response_code": "V_01"})
 
 @csrf_exempt
 @api_view(['PUT'])
@@ -89,3 +90,29 @@ def delete_product_view(request, pk):
         log.error(traceback.format_exc())
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+        
+
+@csrf_exempt
+@api_view(['GET','POST'])
+@permission_classes([IsAuthenticated])
+def cart_view(request,cart_id=None):
+    try:
+        srv = CartSrv(request.user)
+        if request.method == 'GET':
+            if cart_id:
+                data,msg,code = srv.get_cart_data(cart_id)            
+                return Response({"data": data, "response_msg": msg, "response_code": code})            
+            else:
+                return Response({"data": [], "response_msg": "Id not given", "response_code": "V_012"})            
+            
+        elif request.method == 'POST':
+            data = json.loads(request.body)
+            data, msg, code = srv.add_to_cart(cart_id,data)
+            return Response({"data": data, "response_msg": msg, "response_code": code})
+            
+        else:
+            return Response({"error": "Invalid request method", "response_msg": "Invalid request method", "response_code": "V_02"})
+            
+    except Exception as e:
+        print(traceback.format_exc())
+        return Response({"error": str(e),"response_msg": "Error while adding to cart", "response_code": "V_01"})
